@@ -272,13 +272,13 @@ module.exports = {
   apps: [{
     name: 'petshop-caopanhia',
     script: 'npx',
-    args: 'vite preview --host 0.0.0.0 --port 5000',  # Alterado para a porta 5000
+    args: 'vite preview --host 0.0.0.0 --port 5000',
     cwd: '${PROJECT_DIR}',
     instances: 1,
     exec_mode: 'fork',
     env: {
       NODE_ENV: 'production',
-      PORT: 5000  # Alterado para a porta 5000
+      PORT: 5000  
     },
     error_file: '/var/log/pm2/petshop-error.log',
     out_file: '/var/log/pm2/petshop-out.log',
@@ -338,7 +338,7 @@ server {
 
     # Configuração de proxy
     location / {
-        proxy_pass http://127.0.0.1:5000;  # Alterado para a porta 5000
+        proxy_pass http://127.0.0.1:5000;  
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
