@@ -392,31 +392,13 @@ sudo ufw --force enable
 log "✅ Firewall configurado"
 
 # =============================================================================
-# ETAPA 12: INICIAR NGINX
-# =============================================================================
-log "🚀 Iniciando Nginx..."
-sudo systemctl enable nginx
-sudo systemctl restart nginx
-
-# Aguardar nginx inicializar
-sleep 5
-
-if is_service_running nginx; then
-    log "✅ Nginx iniciado com sucesso"
-else
-    error "Falha ao iniciar Nginx"
-    sudo journalctl -u nginx --no-pager -l
-    exit 1
-fi
-
-# =============================================================================
 # ETAPA 13: CONFIGURAR SSL
 # =============================================================================
 log "🔒 Configurando SSL com Let's Encrypt..."
 
-# Obter certificado SSL com verificações
+# Obter certificado SSL com verificações, usando a porta 8080 para a validação
 for i in {1..3}; do
-    if sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "$EMAIL" --redirect; then
+    if sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "$EMAIL" --redirect --http-01-port 8080; then
         log "✅ Certificado SSL obtido com sucesso"
         break
     else
@@ -428,6 +410,11 @@ for i in {1..3}; do
         fi
     fi
 done
+
+# Configurar renovação automática
+sudo systemctl enable certbot.timer
+sudo systemctl start certbot.timer
+
 
 # Configurar renovação automática
 sudo systemctl enable certbot.timer
