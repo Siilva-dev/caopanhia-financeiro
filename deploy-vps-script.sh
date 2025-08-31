@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =============================================================================
-<<<<<<< HEAD
+
 # SCRIPT DE DEPLOY COMPLETO PARA VPS CONTABO - VERSÃO CORRIGIDA
 # Sistema: Pet Shop Cãompanhia
 # Domínio: https://app.petshopcaopanhia.com/
@@ -88,12 +88,11 @@ DOMAIN="petshopcaopanhia.com"
 WWW_DOMAIN="www.petshopcaopanhia.com"
 PROJECT_DIR="/var/www/petshop"
 GITHUB_REPO="https://github.com/SEU_USUARIO/SEU_REPOSITORIO.git"  # SUBSTITUA PELA SUA URL DO GITHUB
->>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
+
 
 # =============================================================================
 # ETAPA 1: ATUALIZAR O SISTEMA
 # =============================================================================
-<<<<<<< HEAD
 log "📦 Atualizando o sistema..."
 sudo apt update
 sudo apt upgrade -y
@@ -231,13 +230,13 @@ git clone $GITHUB_REPO .
 # =============================================================================
 echo "🔑 Configurando variáveis de ambiente..."
 cat > .env << EOL
->>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
+
 VITE_SUPABASE_PROJECT_ID="vsktxgniftqjlchemvsl"
 VITE_SUPABASE_PUBLISHABLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZza3R4Z25pZnRxamxjaGVtdnNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyODQ4NzQsImV4cCI6MjA3MDg2MDg3NH0.mngIvBUMtit0mOvtkuG0G48WdDTmUIBcCDi8-b-tPLg"
 VITE_SUPABASE_URL="https://vsktxgniftqjlchemvsl.supabase.co"
 EOL
 
-<<<<<<< HEAD
+
 log "✅ Arquivo .env criado"
 
 # =============================================================================
@@ -370,7 +369,7 @@ module.exports = {
     script: 'npm',
     args: 'run preview',
     cwd: '$PROJECT_DIR',
->>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
+
     instances: 1,
     exec_mode: 'fork',
     env: {
@@ -380,19 +379,19 @@ module.exports = {
     error_file: '/var/log/pm2/petshop-error.log',
     out_file: '/var/log/pm2/petshop-out.log',
     log_file: '/var/log/pm2/petshop-combined.log',
-<<<<<<< HEAD
+
     time: true,
     autorestart: true,
     watch: false,
     max_memory_restart: '1G'
-=======
+
     time: true
->>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
+
   }]
 }
 EOL
 
-<<<<<<< HEAD
+
 # Iniciar aplicação com PM2
 if pm2 start ecosystem.config.cjs; then
     log "✅ Aplicação iniciada com PM2"
@@ -465,7 +464,7 @@ server {
 }
 EOL
 
-=======
+
 # Criar diretório de logs
 sudo mkdir -p /var/log/pm2
 sudo chown -R $USER:$USER /var/log/pm2
@@ -496,25 +495,25 @@ server {
 
     # Configurações SSL (serão preenchidas pelo Certbot)
     
->>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
+
     # Cabeçalhos de segurança
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "no-referrer-when-downgrade" always;
-<<<<<<< HEAD
+
     add_header Content-Security-Policy "default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'" always;
 
     # Configuração de proxy
     location / {
         proxy_pass http://127.0.0.1:3000;
-=======
+
     add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
 
     # Proxy para aplicação Node.js
     location / {
         proxy_pass http://localhost:3000;
->>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
+
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -525,30 +524,29 @@ server {
         proxy_cache_bypass \$http_upgrade;
         proxy_read_timeout 300s;
         proxy_connect_timeout 75s;
-<<<<<<< HEAD
+
         proxy_send_timeout 300s;
     }
 
     # Configurações para arquivos estáticos
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
         proxy_pass http://127.0.0.1:3000;
-=======
+
     }
 
     # Configurações para arquivos estáticos
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
         proxy_pass http://localhost:3000;
->>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
+
         proxy_set_header Host \$host;
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
 
-<<<<<<< HEAD
+
     # Logs específicos
-=======
+
     # Logs
->>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
     access_log /var/log/nginx/petshop_access.log;
     error_log /var/log/nginx/petshop_error.log;
 }
@@ -556,7 +554,7 @@ EOL
 
 # Ativar site
 sudo ln -sf /etc/nginx/sites-available/petshop /etc/nginx/sites-enabled/
-<<<<<<< HEAD
+
 
 # Testar configuração
 if sudo nginx -t; then
@@ -574,7 +572,7 @@ sudo ufw --force reset
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 sudo ufw allow 5000/tcp  # Liberar a nova porta 5000
-=======
+
 sudo rm -f /etc/nginx/sites-enabled/default
 
 # Testar configuração do Nginx
@@ -596,12 +594,12 @@ sudo systemctl enable certbot.timer
 # ETAPA 10: CONFIGURAR FIREWALL
 # =============================================================================
 echo "🔥 Configurando firewall..."
->>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
+
 sudo ufw allow ssh
 sudo ufw allow 'Nginx Full'
 sudo ufw --force enable
 
-<<<<<<< HEAD
+
 log "✅ Firewall configurado"
 
 # =============================================================================
@@ -722,7 +720,7 @@ else
     fi
     exit 1
 fi
-=======
+
 # =============================================================================
 # ETAPA 11: INICIAR SERVIÇOS
 # =============================================================================
@@ -761,7 +759,7 @@ npm install
 npm run build
 pm2 restart petshop-caopanhia
 echo "✅ Atualização concluída!"
->>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
+
 EOL
 
 chmod +x /home/$USER/update-petshop.sh
@@ -770,7 +768,7 @@ chmod +x /home/$USER/update-petshop.sh
 # FINALIZAÇÃO
 # =============================================================================
 echo ""
-<<<<<<< HEAD
+
 echo -e "${GREEN}🎉 ============================================${NC}"
 echo -e "${GREEN}🎉 DEPLOY CONCLUÍDO COM SUCESSO!${NC}"
 echo -e "${GREEN}🎉 ============================================${NC}"
@@ -800,7 +798,7 @@ echo ""
 
 
 
-=======
+
 echo "🎉 ============================================"
 echo "🎉 DEPLOY CONCLUÍDO COM SUCESSO!"
 echo "🎉 ============================================"
@@ -826,4 +824,4 @@ echo "🔥 Firewall configurado!"
 echo "🔄 Auto-restart configurado!"
 echo ""
 echo "✅ Sistema 100% funcional em produção!"
->>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
+
