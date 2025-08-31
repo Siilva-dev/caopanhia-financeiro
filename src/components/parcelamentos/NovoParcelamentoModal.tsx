@@ -5,6 +5,7 @@ import * as z from "zod";
 import { format } from "date-fns";
 import { Calendar, CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Dialog,
   DialogContent,
@@ -38,7 +39,8 @@ import { Input } from "@/components/ui/input";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useBankAccounts, useCreateInstallment, useUpdateInstallment } from "@/hooks/useSupabaseData";
 
-const formSchema = z.object({
+// Schema base sem conta associada
+const baseFormSchema = z.object({
   descricao: z.string().min(1, "Descrição é obrigatória"),
   valorTotal: z.number().min(0.01, "Valor total deve ser maior que 0"),
   numeroParcelas: z.number().min(1, "Número de parcelas deve ser maior que 0"),
@@ -48,10 +50,19 @@ const formSchema = z.object({
     required_error: "Data de vencimento é obrigatória",
   }),
   formaPagamento: z.enum(["Cartão", "Boleto", "Pix"]),
+});
+
+// Schema completo com conta associada (para admin)
+const adminFormSchema = baseFormSchema.extend({
   contaAssociada: z.string().min(1, "Conta associada é obrigatória"),
 });
 
-type FormData = z.infer<typeof formSchema>;
+// Schema para funcionário (conta opcional)
+const funcionarioFormSchema = baseFormSchema.extend({
+  contaAssociada: z.string().optional(),
+});
+
+type FormData = z.infer<typeof adminFormSchema>;
 
 interface NovoParcelamentoModalProps {
   open: boolean;
@@ -69,6 +80,14 @@ export function NovoParcelamentoModal({
   const { data: bankAccounts = [] } = useBankAccounts();
   const createInstallment = useCreateInstallment();
   const updateInstallment = useUpdateInstallment();
+  const { userRole } = useAuth();
+  
+  // Determine se é funcionário
+  const isFuncionario = userRole === 'funcionario';
+  
+  // Escolher schema baseado no papel do usuário
+  const formSchema = isFuncionario ? funcionarioFormSchema : adminFormSchema;
+  
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -90,7 +109,8 @@ export function NovoParcelamentoModal({
       installment_amount: data.valorParcela,
       start_date: format(data.proximaData, "yyyy-MM-dd"),
       payment_method: data.formaPagamento,
-      associated_account: data.contaAssociada,
+      // Para funcionários, não enviar conta associada (será null no backend)
+      associated_account: isFuncionario ? null : data.contaAssociada,
       next_due_date: format(data.proximaData, "yyyy-MM-dd"),
       status: data.status,
     };
@@ -328,30 +348,42 @@ export function NovoParcelamentoModal({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="contaAssociada"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Conta Associada</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a conta" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {bankAccounts?.map((account) => (
-                        <SelectItem key={account.id} value={account.name}>
-                          {account.name} - {account.type || 'Conta Digital'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Campo de conta associada - apenas para administradores */}
+            {!isFuncionario && (
+              <FormField
+                control={form.control}
+                name="contaAssociada"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Conta Associada</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a conta" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {bankAccounts?.map((account) => (
+                          <SelectItem key={account.id} value={account.name}>
+                            {account.name} - {account.type || 'Conta Digital'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* Informação para funcionários */}
+            {isFuncionario && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Informação:</strong> A conta bancária será associada posteriormente pelo administrador.
+                </p>
+              </div>
+            )}
 
             <DialogFooter className="gap-2 pt-4">
               <Button type="button" variant="outline" onClick={handleCancel}>

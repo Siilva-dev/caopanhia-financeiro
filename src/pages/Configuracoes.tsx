@@ -14,7 +14,10 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile, useUpdateProfile } from "@/hooks/useSupabaseData";
-import ConfiguracoesFuncionario from "./ConfiguracoesFuncionario";
+import ConfiguracoesFuncionario from './ConfiguracoesFuncionario';
+import { ChangePasswordModal } from '@/components/configuracoes/ChangePasswordModal';
+import { TwoFactorModal } from '@/components/configuracoes/TwoFactorModal';
+import { Toaster } from "@/components/ui/toaster";
 import { 
   Settings, 
   User, 
@@ -36,6 +39,9 @@ const Configuracoes = () => {
   const { data: profile } = useProfile();
   const updateProfileMutation = useUpdateProfile();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showTwoFactorModal, setShowTwoFactorModal] = useState(false);
+  const [mfaEnabled, setMfaEnabled] = useState(false);
   
   // Carregar foto do perfil quando o componente monta ou perfil muda
   useEffect(() => {
@@ -43,6 +49,24 @@ const Configuracoes = () => {
       setAvatarUrl(profile.avatar_url);
     }
   }, [profile]);
+
+  // Verificar status do MFA quando o componente monta
+  useEffect(() => {
+    const checkMFAStatus = async () => {
+      try {
+        const { data: factors } = await supabase.auth.mfa.listFactors();
+        setMfaEnabled(factors.totp.length > 0);
+        setConfiguracoes(prev => ({
+          ...prev,
+          autenticacaoDoisFatores: factors.totp.length > 0
+        }));
+      } catch (error) {
+        console.error('Erro ao verificar status do MFA:', error);
+      }
+    };
+
+    checkMFAStatus();
+  }, []);
   
   // Se for funcionário, renderiza página simplificada
   if (userRole === 'funcionario') {
@@ -324,19 +348,19 @@ const Configuracoes = () => {
   };
 
   const handleChangePassword = () => {
-    const newPassword = prompt('Digite a nova senha:');
-    if (newPassword && newPassword.length >= 6) {
-      toast({
-        title: "Senha alterada!",
-        description: "Sua senha foi atualizada com sucesso.",
-      });
-    } else if (newPassword) {
-      toast({
-        title: "Senha muito curta",
-        description: "A senha deve ter pelo menos 6 caracteres.",
-        variant: "destructive",
-      });
-    }
+    setShowChangePasswordModal(true);
+  };
+
+  const handleTwoFactorToggle = () => {
+    setShowTwoFactorModal(true);
+  };
+
+  const handleMFAStatusChange = (enabled: boolean) => {
+    setMfaEnabled(enabled);
+    setConfiguracoes(prev => ({
+      ...prev,
+      autenticacaoDoisFatores: enabled
+    }));
   };
 
   const handleDownloadUserData = () => {
@@ -667,13 +691,23 @@ const Configuracoes = () => {
                   <div className="space-y-0.5">
                     <Label>Autenticação de Dois Fatores</Label>
                     <p className="text-sm text-muted-foreground">
-                      Adicione uma camada extra de segurança
+                      Adicione uma camada extra de segurança com Google Authenticator
                     </p>
+                    {mfaEnabled && (
+                      <Badge variant="secondary" className="text-xs">
+                        <Shield className="mr-1 h-3 w-3" />
+                        Ativo
+                      </Badge>
+                    )}
                   </div>
-                  <Switch
-                    checked={configuracoes.autenticacaoDoisFatores}
-                    onCheckedChange={(checked) => setConfiguracoes({...configuracoes, autenticacaoDoisFatores: checked})}
-                  />
+                  <Button
+                    variant={mfaEnabled ? "secondary" : "outline"}
+                    size="sm"
+                    onClick={handleTwoFactorToggle}
+                  >
+                    <Shield className="mr-2 h-4 w-4" />
+                    {mfaEnabled ? "Gerenciar" : "Configurar"}
+                  </Button>
                 </div>
                 
                 <Separator />
@@ -795,9 +829,23 @@ const Configuracoes = () => {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
-    </div>
-  );
+        </Tabs>
+
+        <ChangePasswordModal 
+          isOpen={showChangePasswordModal} 
+          onClose={() => setShowChangePasswordModal(false)} 
+        />
+
+        <TwoFactorModal
+          isOpen={showTwoFactorModal}
+          onClose={() => setShowTwoFactorModal(false)}
+          currentStatus={mfaEnabled}
+          onStatusChange={handleMFAStatusChange}
+        />
+
+        <Toaster />
+      </div>
+    );
 };
 
 export default Configuracoes;
