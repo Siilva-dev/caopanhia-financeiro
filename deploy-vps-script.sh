@@ -327,7 +327,7 @@ sudo rm -f /etc/nginx/sites-enabled/default
 # Criar configuração inicial do site (apenas HTTP)
 sudo tee /etc/nginx/sites-available/petshop > /dev/null << EOL
 server {
-    listen 80;
+    listen 8080;
     server_name ${DOMAIN};
 
     # Cabeçalhos de segurança
