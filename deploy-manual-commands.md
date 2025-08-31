@@ -2,7 +2,11 @@
 
 ## ⚠️ ANTES DE COMEÇAR:
 1. Substitua `SEU_USUARIO/SEU_REPOSITORIO` pela URL real do seu GitHub
+<<<<<<< HEAD
 2. Certifique-se que o subdomínio `app.petshopcaopanhia.com` já está apontando para o IP da sua VPS
+=======
+2. Certifique-se que o domínio `petshopcaopanhia.com` já está apontando para o IP da sua VPS
+>>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
 3. Tenha acesso SSH à sua VPS da Contabo
 
 ---
@@ -108,13 +112,21 @@ pm2 startup
 sudo tee /etc/nginx/sites-available/petshop << 'EOL'
 server {
     listen 80;
+<<<<<<< HEAD
     server_name app.petshopcaopanhia.com;
+=======
+    server_name petshopcaopanhia.com www.petshopcaopanhia.com;
+>>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
     return 301 https://$server_name$request_uri;
 }
 
 server {
     listen 443 ssl http2;
+<<<<<<< HEAD
     server_name app.petshopcaopanhia.com;
+=======
+    server_name petshopcaopanhia.com www.petshopcaopanhia.com;
+>>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
 
     location / {
         proxy_pass http://localhost:3000;
@@ -140,7 +152,11 @@ sudo systemctl reload nginx
 ### 8️⃣ Configurar SSL
 ```bash
 # Obter certificado SSL gratuito
+<<<<<<< HEAD
 sudo certbot --nginx -d app.petshopcaopanhia.com
+=======
+sudo certbot --nginx -d petshopcaopanhia.com -d www.petshopcaopanhia.com
+>>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
 
 # Configurar renovação automática
 sudo systemctl enable certbot.timer
@@ -200,11 +216,19 @@ sudo tail -f /var/log/nginx/error.log
 ---
 
 ## 🎯 RESULTADO FINAL:
+<<<<<<< HEAD
 - ✅ Site disponível em: **https://app.petshopcaopanhia.com**
+=======
+- ✅ Site disponível em: **https://petshopcaopanhia.com**
+>>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
 - ✅ SSL/HTTPS configurado automaticamente
 - ✅ Auto-restart em caso de falhas
 - ✅ Firewall configurado
 - ✅ Logs organizados
 - ✅ Fácil atualização via Git
 
+<<<<<<< HEAD
 **🚀 Sistema 100% funcional em produção!**
+=======
+**🚀 Sistema 100% funcional em produção!**
+>>>>>>> 2e3d8f856c22fcbd92b2a3c6f864ceb801fd3f36
