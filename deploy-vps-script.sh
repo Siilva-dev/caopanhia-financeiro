@@ -46,7 +46,7 @@ is_service_running() {
 # Variáveis de configuração
 DOMAIN="app.petshopcaopanhia.com"
 PROJECT_DIR="/var/www/petshop"
-GITHUB_REPO="https://github.com/Siilva-dev/petfolio-financeiro-v22-0.git"
+GITHUB_REPO="https://github.com/Siilva-dev/caopanhia-financeiro.git"
 NODE_VERSION="20"
 EMAIL="contato@petshopcaopanhia.com"
 
@@ -333,8 +333,22 @@ module.exports = {
   apps: [{
     name: 'petshop-caopanhia',
     script: 'npx',
-    args: 'vite preview --host 0.0.0.0 --port 3000',
+    args: 'vite preview --host 0.0.0.0 --port 5000',  # Alterado para a porta 5000
     cwd: '${PROJECT_DIR}',
+    instances: 1,
+    exec_mode: 'fork',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 5000  # Alterado para a porta 5000
+    },
+    error_file: '/var/log/pm2/petshop-error.log',
+    out_file: '/var/log/pm2/petshop-out.log',
+    log_file: '/var/log/pm2/petshop-combined.log',
+    time: true
+  }]
+}
+EOL
+
 =======
 # =============================================================================
 # ETAPA 6: INSTALAR DEPENDÊNCIAS E BUILD
@@ -406,6 +420,9 @@ log "✅ PM2 configurado e aplicação online"
 # =============================================================================
 # ETAPA 10: CONFIGURAR NGINX
 # =============================================================================
+# =============================================================================
+# ETAPA 10: CONFIGURAR NGINX
+# =============================================================================
 log "🌐 Configurando Nginx..."
 
 # Backup da configuração existente
@@ -416,10 +433,37 @@ sudo rm -f /etc/nginx/sites-enabled/default
 
 # Criar configuração inicial do site (apenas HTTP)
 sudo tee /etc/nginx/sites-available/petshop > /dev/null << EOL
-# Configuração HTTP inicial (SSL será adicionado pelo Certbot)
 server {
     listen 80;
     server_name ${DOMAIN};
+
+    # Cabeçalhos de segurança
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+
+    # Configuração de proxy
+    location / {
+        proxy_pass http://127.0.0.1:5000;  # Alterado para a porta 5000
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 75s;
+        proxy_send_timeout 300s;
+    }
+
+    # Logs específicos
+    access_log /var/log/nginx/petshop_access.log;
+    error_log /var/log/nginx/petshop_error.log;
+}
+EOL
 
 =======
 # Criar diretório de logs
@@ -529,6 +573,7 @@ log "🔥 Configurando firewall..."
 sudo ufw --force reset
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
+sudo ufw allow 5000/tcp  # Liberar a nova porta 5000
 =======
 sudo rm -f /etc/nginx/sites-enabled/default
 
