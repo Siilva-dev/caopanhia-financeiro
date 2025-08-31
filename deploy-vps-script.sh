@@ -324,11 +324,21 @@ sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup 2>/dev/null || true
 # Remover configuração padrão
 sudo rm -f /etc/nginx/sites-enabled/default
 
-# Criar configuração inicial do site (apenas HTTP)
+# Criar diretório webroot para certbot
+sudo mkdir -p /var/www/html
+sudo chown -R www-data:www-data /var/www/html
+
+# Criar configuração inicial do site (HTTP na porta 8080)
 sudo tee /etc/nginx/sites-available/petshop > /dev/null << EOL
 server {
     listen 8080;
     server_name ${DOMAIN};
+
+    # Diretório para webroot do certbot
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+        try_files \$uri =404;
+    }
 
     # Cabeçalhos de segurança
     add_header X-Frame-Options "SAMEORIGIN" always;
@@ -354,7 +364,7 @@ server {
 
     # Configurações para arquivos estáticos
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        proxy_pass http://127.0.0.1:3000;
+        proxy_pass http://127.0.0.1:5000;
         proxy_set_header Host \$host;
         expires 1y;
         add_header Cache-Control "public, immutable";
@@ -377,6 +387,16 @@ else
     exit 1
 fi
 
+# Iniciar Nginx
+log "🚀 Iniciando Nginx..."
+if sudo systemctl start nginx; then
+    sudo systemctl enable nginx
+    log "✅ Nginx iniciado com sucesso"
+else
+    error "Falha ao iniciar Nginx"
+    exit 1
+fi
+
 # =============================================================================
 # ETAPA 11: CONFIGURAR FIREWALL
 # =============================================================================
@@ -384,9 +404,9 @@ log "🔥 Configurando firewall..."
 sudo ufw --force reset
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
-sudo ufw --force enable
 sudo ufw allow ssh
-sudo ufw allow 'Nginx Full'
+sudo ufw allow 8080/tcp
+sudo ufw allow 443/tcp
 sudo ufw --force enable
 
 log "✅ Firewall configurado"
@@ -396,16 +416,84 @@ log "✅ Firewall configurado"
 # =============================================================================
 log "🔒 Configurando SSL com Let's Encrypt..."
 
-# Obter certificado SSL com verificações, usando a porta 8080 para a validação
+# Aguardar nginx estar totalmente inicializado
+sleep 5
+
+# Obter certificado SSL usando webroot (evita conflito com porta 80)
 for i in {1..3}; do
-    if sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "$EMAIL" --redirect --http-01-port 8080; then
+    if sudo certbot certonly --webroot -w /var/www/html -d "$DOMAIN" --non-interactive --agree-tos --email "$EMAIL"; then
         log "✅ Certificado SSL obtido com sucesso"
+        
+        # Agora atualizar a configuração do nginx para incluir SSL
+        sudo tee /etc/nginx/sites-available/petshop > /dev/null << EOF
+server {
+    listen 8080;
+    server_name ${DOMAIN};
+    return 301 https://\$server_name\$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name ${DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+
+    # Configurações SSL modernas
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA384;
+    ssl_prefer_server_ciphers off;
+
+    # Cabeçalhos de segurança
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # Configuração de proxy
+    location / {
+        proxy_pass http://127.0.0.1:5000;  
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 75s;
+        proxy_send_timeout 300s;
+    }
+
+    # Configurações para arquivos estáticos
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host \$host;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Logs específicos
+    access_log /var/log/nginx/petshop_access.log;
+    error_log /var/log/nginx/petshop_error.log;
+}
+EOF
+        
+        # Testar nova configuração
+        if sudo nginx -t; then
+            sudo systemctl reload nginx
+            log "✅ Nginx recarregado com configuração SSL"
+        else
+            warning "Erro na configuração SSL do Nginx, mantendo configuração HTTP"
+        fi
         break
     else
         warning "Tentativa $i falhou. Aguardando e tentando novamente..."
         sleep 30
         if [ $i -eq 3 ]; then
-            warning "Falha ao obter certificado SSL. Continuando sem HTTPS..."
+            warning "Falha ao obter certificado SSL. Continuando apenas com HTTP..."
             # Não falhar o script por causa do SSL
         fi
     fi
@@ -436,8 +524,8 @@ sudo systemctl status nginx --no-pager -l
 # Testar aplicação local
 info "Testando aplicação local:"
 for i in {1..5}; do
-    if curl -f -s http://localhost:3000 > /dev/null; then
-        log "✅ Aplicação respondendo localmente"
+    if curl -f -s http://localhost:5000 > /dev/null; then
+        log "✅ Aplicação respondendo localmente na porta 5000"
         break
     else
         warning "Tentativa $i - aplicação não responde. Aguardando..."
@@ -445,6 +533,21 @@ for i in {1..5}; do
         if [ $i -eq 5 ]; then
             error "Aplicação não está respondendo após múltiplas tentativas"
             pm2 logs petshop-caopanhia --lines 50
+        fi
+    fi
+done
+
+# Testar via nginx na porta 8080
+info "Testando aplicação via Nginx na porta 8080:"
+for i in {1..3}; do
+    if curl -f -s http://localhost:8080 > /dev/null; then
+        log "✅ Aplicação respondendo via Nginx na porta 8080"
+        break
+    else
+        warning "Tentativa $i - nginx não responde. Aguardando..."
+        sleep 5
+        if [ $i -eq 3 ]; then
+            warning "Nginx não está respondendo na porta 8080"
         fi
     fi
 done
