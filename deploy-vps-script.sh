@@ -89,6 +89,9 @@ log "🔧 Instalando dependências essenciais..."
 
 # Instalar pacotes básicos
 sudo apt install -y curl wget git nginx certbot python3-certbot-nginx build-essential software-properties-common
+# Impedir que o nginx do sistema tente iniciar sozinho (evita conflito com Traefik)
+sudo systemctl stop nginx 2>/dev/null || true
+sudo systemctl disable nginx 2>/dev/null || true
 
 # Verificar se nginx foi instalado corretamente
 if ! command_exists nginx; then
