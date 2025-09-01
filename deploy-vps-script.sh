@@ -318,17 +318,52 @@ log "✅ PM2 configurado e aplicação online"
 # =============================================================================
 log "🌐 Configurando Nginx..."
 
-# Verificar se Nginx já está rodando (Evolution API)
+# Verificar se portas 80/443 estão ocupadas (Traefik/Docker)
+PORT_80_BUSY=false
+PORT_443_BUSY=false
+
+if ss -tuln | grep -q ":80 "; then
+    PORT_80_BUSY=true
+    log "⚠️  Porta 80 ocupada (provavelmente Traefik/Docker)"
+fi
+
+if ss -tuln | grep -q ":443 "; then
+    PORT_443_BUSY=true
+    log "⚠️  Porta 443 ocupada (provavelmente Traefik/Docker)"
+fi
+
+# Verificar se Nginx já está rodando
 NGINX_RUNNING=false
 if systemctl is-active --quiet nginx; then
-    log "⚠️  Nginx já está rodando (Evolution API). Apenas adicionando nova configuração..."
+    log "⚠️  Nginx já está rodando. Apenas adicionando nova configuração..."
     NGINX_RUNNING=true
 else
-    log "📦 Nginx não está rodando. Instalando..."
-    # JAMAIS reinstalar nginx se já estiver rodando - isso quebra configurações existentes
-    if ! command_exists nginx; then
-        sudo apt update
-        sudo apt install -y nginx
+    log "📦 Nginx não está ativo. Verificando instalação..."
+    
+    # Se portas principais estão ocupadas, não tentar iniciar nginx
+    if [ "$PORT_80_BUSY" = true ] || [ "$PORT_443_BUSY" = true ]; then
+        log "🚫 Portas 80/443 ocupadas por Traefik/Docker. Nginx será configurado mas não iniciado."
+        log "📌 Traefik deve rotear o tráfego para nossa aplicação na porta 8080"
+        
+        # Instalar nginx se não estiver instalado (só para configuração)
+        if ! command_exists nginx; then
+            log "📦 Instalando Nginx (apenas para configuração)..."
+            sudo apt update
+            sudo apt install -y nginx
+        fi
+        
+        # Parar nginx se estiver tentando rodar e falhando
+        sudo systemctl stop nginx 2>/dev/null || true
+        sudo systemctl disable nginx 2>/dev/null || true
+        
+        NGINX_RUNNING=false
+    else
+        # Portas livres, pode iniciar nginx normalmente
+        if ! command_exists nginx; then
+            log "📦 Instalando Nginx..."
+            sudo apt update
+            sudo apt install -y nginx
+        fi
     fi
 fi
 
@@ -401,7 +436,7 @@ else
     exit 1
 fi
 
-# Iniciar/Recarregar Nginx
+# Iniciar/Recarregar Nginx APENAS se portas estão livres
 if [ "$NGINX_RUNNING" = true ]; then
     log "🔄 Recarregando Nginx existente..."
     if sudo systemctl reload nginx; then
@@ -410,21 +445,19 @@ if [ "$NGINX_RUNNING" = true ]; then
         error "Falha ao recarregar Nginx"
         exit 1
     fi
-else
-    log "🚀 Iniciando Nginx..."
-    # Só iniciar e habilitar se nginx não estiver rodando
-    if ! systemctl is-active --quiet nginx; then
-        if sudo systemctl start nginx; then
-            sudo systemctl enable nginx
-            log "✅ Nginx iniciado com sucesso"
-        else
-            error "Falha ao iniciar Nginx"
-            exit 1
-        fi
+elif [ "$PORT_80_BUSY" = false ] && [ "$PORT_443_BUSY" = false ]; then
+    log "🚀 Portas livres - Iniciando Nginx..."
+    if sudo systemctl start nginx; then
+        sudo systemctl enable nginx
+        log "✅ Nginx iniciado com sucesso"
     else
-        log "✅ Nginx já está ativo, apenas recarregando configuração"
-        sudo systemctl reload nginx
+        error "Falha ao iniciar Nginx"
+        exit 1
     fi
+else
+    log "🚫 Nginx NÃO será iniciado (portas 80/443 ocupadas por Traefik)"
+    log "📌 Aplicação rodando na porta 5000, configuração Nginx criada na porta 8080"
+    log "📌 Configure seu Traefik para rotear tráfego para localhost:8080"
 fi
 
 # =============================================================================
