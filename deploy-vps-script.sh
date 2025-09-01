@@ -324,9 +324,12 @@ if systemctl is-active --quiet nginx; then
     log "⚠️  Nginx já está rodando (Evolution API). Apenas adicionando nova configuração..."
     NGINX_RUNNING=true
 else
-    log "📦 Nginx não está rodando. Instalando se necessário..."
-    sudo apt update
-    sudo apt install -y nginx
+    log "📦 Nginx não está rodando. Instalando..."
+    # JAMAIS reinstalar nginx se já estiver rodando - isso quebra configurações existentes
+    if ! command_exists nginx; then
+        sudo apt update
+        sudo apt install -y nginx
+    fi
 fi
 
 # Criar diretório webroot para certbot
