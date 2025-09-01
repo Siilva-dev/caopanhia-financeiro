@@ -318,11 +318,26 @@ log "✅ PM2 configurado e aplicação online"
 # =============================================================================
 log "🌐 Configurando Nginx..."
 
-# NÃO mexer no nginx existente, apenas adicionar novo site na porta 8080
+# Verificar se Nginx já está rodando (Evolution API)
+NGINX_RUNNING=false
+if systemctl is-active --quiet nginx; then
+    log "⚠️  Nginx já está rodando (Evolution API). Apenas adicionando nova configuração..."
+    NGINX_RUNNING=true
+else
+    log "📦 Nginx não está rodando. Instalando se necessário..."
+    sudo apt update
+    sudo apt install -y nginx
+fi
 
 # Criar diretório webroot para certbot
 sudo mkdir -p /var/www/html
 sudo chown -R www-data:www-data /var/www/html
+
+# Remover configuração padrão que usa porta 80 APENAS se nginx não estiver rodando
+if [ "$NGINX_RUNNING" = false ]; then
+    sudo rm -f /etc/nginx/sites-enabled/default
+    log "✅ Removida configuração default da porta 80"
+fi
 
 # Criar configuração inicial do site (HTTP na porta 8080)
 sudo tee /etc/nginx/sites-available/petshop > /dev/null << EOL
@@ -383,14 +398,24 @@ else
     exit 1
 fi
 
-# Iniciar Nginx
-log "🚀 Iniciando Nginx..."
-if sudo systemctl start nginx; then
-    sudo systemctl enable nginx
-    log "✅ Nginx iniciado com sucesso"
+# Iniciar/Recarregar Nginx
+if [ "$NGINX_RUNNING" = true ]; then
+    log "🔄 Recarregando Nginx existente..."
+    if sudo systemctl reload nginx; then
+        log "✅ Nginx recarregado com sucesso (Evolution API preservado)"
+    else
+        error "Falha ao recarregar Nginx"
+        exit 1
+    fi
 else
-    error "Falha ao iniciar Nginx"
-    exit 1
+    log "🚀 Iniciando Nginx..."
+    if sudo systemctl start nginx; then
+        sudo systemctl enable nginx
+        log "✅ Nginx iniciado com sucesso"
+    else
+        error "Falha ao iniciar Nginx"
+        exit 1
+    fi
 fi
 
 # =============================================================================
