@@ -412,12 +412,18 @@ if [ "$NGINX_RUNNING" = true ]; then
     fi
 else
     log "🚀 Iniciando Nginx..."
-    if sudo systemctl start nginx; then
-        sudo systemctl enable nginx
-        log "✅ Nginx iniciado com sucesso"
+    # Só iniciar e habilitar se nginx não estiver rodando
+    if ! systemctl is-active --quiet nginx; then
+        if sudo systemctl start nginx; then
+            sudo systemctl enable nginx
+            log "✅ Nginx iniciado com sucesso"
+        else
+            error "Falha ao iniciar Nginx"
+            exit 1
+        fi
     else
-        error "Falha ao iniciar Nginx"
-        exit 1
+        log "✅ Nginx já está ativo, apenas recarregando configuração"
+        sudo systemctl reload nginx
     fi
 fi
 
