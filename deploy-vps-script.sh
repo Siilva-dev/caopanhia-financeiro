@@ -318,11 +318,18 @@ log "✅ PM2 configurado e aplicação online"
 # =============================================================================
 log "🌐 Configurando Nginx..."
 
+# Parar Nginx se estiver rodando
+sudo systemctl stop nginx 2>/dev/null || true
+
 # Backup da configuração existente
 sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup 2>/dev/null || true
 
-# Remover configuração padrão
+# Remover TODAS as configurações padrão
 sudo rm -f /etc/nginx/sites-enabled/default
+sudo rm -f /etc/nginx/sites-available/default
+
+# Remover qualquer configuração que possa usar porta 80
+sudo find /etc/nginx -name "*.conf" -type f -exec sudo sed -i 's/listen 80/listen 8080/g' {} \; 2>/dev/null || true
 
 # Criar diretório webroot para certbot
 sudo mkdir -p /var/www/html
@@ -343,7 +350,7 @@ server {
     # Cabeçalhos de segurança
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-XXS-Protection "1; mode=block" always;
     add_header Referrer-Policy "no-referrer-when-downgrade" always;
 
     # Configuração de proxy
