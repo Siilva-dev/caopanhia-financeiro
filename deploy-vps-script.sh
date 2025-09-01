@@ -569,11 +569,6 @@ done
 sudo systemctl enable certbot.timer
 sudo systemctl start certbot.timer
 
-
-# Configurar renovação automática
-sudo systemctl enable certbot.timer
-sudo systemctl start certbot.timer
-
 # =============================================================================
 # ETAPA 14: VERIFICAÇÕES FINAIS
 # =============================================================================
